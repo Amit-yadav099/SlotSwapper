@@ -3,10 +3,10 @@ import { auth } from '../middleware/auth.js';
 import Event from '../models/Event.js';
 import { Types } from 'mongoose';
 
-const router = express.Router();
+const eventRoutes = express.Router();
 
 // Get all events for the logged-in user
-router.get('/', auth, async (req: any, res) => {
+eventRoutes.get('/', auth, async (req: any, res) => {
   try {
     const events = await Event.find({ userId: req.user.userId })
       .sort({ startTime: 1 });
@@ -17,7 +17,7 @@ router.get('/', auth, async (req: any, res) => {
 });
 
 // Get a single event
-router.get('/:id', auth, async (req: any, res) => {
+eventRoutes.get('/:id', auth, async (req: any, res) => {
   try {
     const event = await Event.findOne({
       _id: req.params.id,
@@ -35,7 +35,7 @@ router.get('/:id', auth, async (req: any, res) => {
 });
 
 // Create a new event
-router.post('/', auth, async (req: any, res) => {
+eventRoutes.post('/', auth, async (req: any, res) => {
   try {
     const { title, startTime, endTime, status = 'BUSY' } = req.body;
 
@@ -65,7 +65,7 @@ router.post('/', auth, async (req: any, res) => {
 });
 
 // Update an event
-router.put('/:id', auth, async (req: any, res) => {
+eventRoutes.put('/:id', auth, async (req: any, res) => {
   try {
     const { title, startTime, endTime, status } = req.body;
 
@@ -101,7 +101,7 @@ router.put('/:id', auth, async (req: any, res) => {
 });
 
 // Delete an event
-router.delete('/:id', auth, async (req: any, res) => {
+eventRoutes.delete('/:id', auth, async (req: any, res) => {
   try {
     const event = await Event.findOneAndDelete({
       _id: req.params.id,
@@ -119,7 +119,7 @@ router.delete('/:id', auth, async (req: any, res) => {
 });
 
 // Update event status (make swappable/busy)
-router.patch('/:id/status', auth, async (req: any, res) => {
+eventRoutes.patch('/:id/status', auth, async (req: any, res) => {
   try {
     const { status } = req.body;
 
@@ -145,4 +145,4 @@ router.patch('/:id/status', auth, async (req: any, res) => {
   }
 });
 
-export default router;
+export default eventRoutes;

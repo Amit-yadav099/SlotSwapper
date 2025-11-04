@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface ISwapRequest extends Document {
   requesterSlotId: mongoose.Types.ObjectId;
   targetSlotId: mongoose.Types.ObjectId;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'BUSY';
   createdAt: Date;
 }
 

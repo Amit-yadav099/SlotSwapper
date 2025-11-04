@@ -1,34 +1,51 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import './App.css';
+import Dashboard from './pages/Dashboard';
+import Marketplace from './pages/MarketPlace';
+import Notifications from './pages/Notification';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token } = useAuth();
-  return token ? <>{children}</> : <Navigate to="/login" />;
-};
-
-const App: React.FC = () => {
+function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
+        <Layout>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <h1>SlotSwapper Dashboard</h1>
-                {/* We will build the dashboard in Day 2 */}
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/marketplace"
+              element={
+                <ProtectedRoute>
+                  <Marketplace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </div>
+        </Layout>
       </Router>
     </AuthProvider>
   );
-};
+}
 
 export default App;

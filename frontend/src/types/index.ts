@@ -23,3 +23,46 @@ export interface RegisterFormData {
   password: string;
   confirmPassword: string;
 }
+
+// Event types
+export interface Event {
+  _id: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+  status: 'BUSY' | 'SWAPPABLE' | 'SWAP_PENDING';
+  userId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface EventFormData {
+  title: string;
+  startTime: string;
+  endTime: string;
+  status: 'BUSY' | 'SWAPPABLE' | 'SWAP_PENDING';
+}
+
+// Swap types
+export interface SwapRequest {
+  _id: string;
+  name:string;
+  requesterSlotId: Event;
+  targetSlotId: Event;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  createdAt: string;
+}
+
+export interface SwapRequestsResponse {
+  incoming: SwapRequest[];
+  outgoing: SwapRequest[];
+}
+
+export interface CreateSwapRequestData {
+  mySlotId: string;
+  theirSlotId: string;
+}
+
+export interface SwapResponseData {
+  accepted: boolean;
+}

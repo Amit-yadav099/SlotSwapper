@@ -3,10 +3,10 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User';
 
-const router = express.Router();
+const authRoutes = express.Router();
 
 // Register
-router.post('/register', async (req: Request, res: Response) => {
+authRoutes.post('/register', async (req: Request, res: Response) => {
   const { name, email, password } = req.body;
 
   try {
@@ -41,14 +41,15 @@ router.post('/register', async (req: Request, res: Response) => {
         res.json({ token });
       }
     );
-  } catch (err) {
+  }
+   catch (err) {
     console.error(err);
     res.status(500).send('Server error');
   }
 });
 
 // Login
-router.post('/login', async (req: Request, res: Response) => {
+authRoutes.post('/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
@@ -86,4 +87,4 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
-export default router;
+export default authRoutes;

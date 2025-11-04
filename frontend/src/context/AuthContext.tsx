@@ -2,11 +2,13 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import type { AuthContextType, User } from '../types';
 import { authAPI } from '../utils/api';
 
+// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Custom hook for using auth
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
@@ -19,43 +21,58 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [loading, setLoading] = useState<boolean>(true);
 
+  // 🔹 Validate and fetch user on load if token exists
   useEffect(() => {
-    if (token) {
-      // You might want to validate the token by making an API call
-      // For now, we just set the token and assume it's valid
-      // In a real app, you would decode the token and set the user
-    } else {
-      setUser(null);
-    }
+    const fetchUser = async () => {
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await authAPI.getCurrentUser(token); // calls `/auth/me`
+        setUser(response.data.user);
+      } catch (error) {
+        console.error('Token invalid or expired:', error);
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
   }, [token]);
 
+  // 🔹 Login
   const login = async (email: string, password: string) => {
     try {
-      const response = await authAPI.login(email, password);
-      const { token } = response.data;
+      const response = await authAPI.login(email, password); // POST /auth/login
+      const { token, user } = response.data;
       localStorage.setItem('token', token);
       setToken(token);
-      // Decode token to get user info? Or you might have an endpoint to get current user
-      // For now, we don't have the user info, so we set user to null. We'll fix this when we have a /me endpoint.
-      setUser(null);
-    } catch (error) {
-      throw error;
+      setUser(user);
+    } catch (error: any) {
+      throw error.response?.data?.message || 'Login failed';
     }
   };
 
+  // 🔹 Register
   const register = async (name: string, email: string, password: string) => {
     try {
-      const response = await authAPI.register(name, email, password);
-      const { token } = response.data;
+      const response = await authAPI.register(name, email, password); // POST /auth/register
+      const { token, user } = response.data;
       localStorage.setItem('token', token);
       setToken(token);
-      setUser(null);
-    } catch (error) {
-      throw error;
+      setUser(user);
+    } catch (error: any) {
+      throw error.response?.data?.message || 'Registration failed';
     }
   };
 
+  // 🔹 Logout
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -64,15 +81,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     user,
+    token,
     login,
     register,
     logout,
-    token
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  // Show a loader while validating session
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-white to-slate-100 text-gray-500">
+        Loading authentication...
+      </div>
+    );
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

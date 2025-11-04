@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, LogOut, User, Menu } from 'lucide-react';
+import { Calendar, LogOut, User, Menu, Home, ArrowRight, Bell } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +21,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return location.pathname === path;
   };
 
+  const navigation = [
+    { name: 'Dashboard', href: '/', icon: Home },
+    { name: 'Marketplace', href: '/marketplace', icon: ArrowRight },
+    { name: 'Notifications', href: '/notifications', icon: Bell },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -36,6 +42,29 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </span>
               </Link>
             </div>
+
+            {/* Navigation Links - Show only when logged in */}
+            {user && (
+              <div className="flex items-center space-x-8">
+                {navigation.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                        isActiveRoute(item.href)
+                          ? 'bg-primary-100 text-primary-700'
+                          : 'text-gray-600 hover:text-primary-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="flex items-center space-x-4">
               {user ? (
