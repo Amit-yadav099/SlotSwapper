@@ -1,47 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, Clock, User, Check, X, Loader, Calendar } from 'lucide-react';
-import type { SwapRequest } from '../types';
-import { swapAPI } from '../utils/api';
+import React from 'react';
+import { Bell, Clock, User, Check, X, Loader, Calendar, RefreshCw } from 'lucide-react';
+import { useSwapRequests, useRespondToSwapRequest } from '../hooks/useSwaps';
 
 const Notifications: React.FC = () => {
-  const [requests, setRequests] = useState<{ incoming: SwapRequest[]; outgoing: SwapRequest[] }>({
-    incoming: [],
-    outgoing: []
-  });
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchRequests();
-  }, []);
-
-  const fetchRequests = async () => {
-    try {
-      const response = await swapAPI.getMyRequests();
-      setRequests(response.data);
-    } catch (error) {
-      console.error('Error fetching swap requests:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: requests = { incoming: [], outgoing: [] }, isLoading, error, refetch } = useSwapRequests();
+  const respondToSwapRequestMutation = useRespondToSwapRequest();
 
   const handleRespondToRequest = async (requestId: string, accepted: boolean) => {
     try {
-      setActionLoading(requestId);
-      await swapAPI.respondToSwapRequest(requestId, { accepted });
-      await fetchRequests();
-      
-      if (accepted) {
-        alert('Swap accepted successfully!');
-      } else {
-        alert('Swap request declined.');
-      }
+      await respondToSwapRequestMutation.mutateAsync({ requestId, accepted });
     } catch (error: any) {
       console.error('Error responding to swap request:', error);
       alert(error.response?.data?.message || 'Error processing request');
-    } finally {
-      setActionLoading(null);
     }
   };
 
@@ -75,10 +45,26 @@ const Notifications: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader className="h-8 w-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">Failed to load notifications</div>
+          <button
+            onClick={() => refetch()}
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -88,14 +74,23 @@ const Notifications: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3">
-            <div className="bg-primary-100 p-2 rounded-lg">
-              <Bell className="h-6 w-6 text-primary-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary-100 p-2 rounded-lg">
+                <Bell className="h-6 w-6 text-primary-600" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
+                <p className="text-gray-600 mt-1">Manage your swap requests</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
-              <p className="text-gray-600 mt-1">Manage your swap requests</p>
-            </div>
+            <button
+              onClick={() => refetch()}
+              className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Refresh</span>
+            </button>
           </div>
         </div>
 
@@ -123,8 +118,15 @@ const Notifications: React.FC = () => {
                 {requests.incoming.map((request) => (
                   <div
                     key={request._id}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 relative"
                   >
+                    {/* Loading Overlay */}
+                    {(respondToSwapRequestMutation.isPending && respondToSwapRequestMutation.variables?.requestId === request._id) && (
+                      <div className="absolute inset-0 bg-white bg-opacity-50 rounded-xl flex items-center justify-center z-10">
+                        <Loader className="h-6 w-6 text-primary-600 animate-spin" />
+                      </div>
+                    )}
+
                     {/* Request Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -132,7 +134,7 @@ const Notifications: React.FC = () => {
                           Swap Request
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
-                          From {request.requesterSlotId.userId}
+                          From {request.requesterSlotId.userId.name}
                         </p>
                       </div>
                       <span
@@ -179,31 +181,19 @@ const Notifications: React.FC = () => {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => handleRespondToRequest(request._id, true)}
-                          disabled={actionLoading === request._id}
+                          disabled={respondToSwapRequestMutation.isPending}
                           className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center space-x-1 text-sm"
                         >
-                          {actionLoading === request._id ? (
-                            <Loader className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Check className="h-4 w-4" />
-                              <span>Accept</span>
-                            </>
-                          )}
+                          <Check className="h-4 w-4" />
+                          <span>Accept</span>
                         </button>
                         <button
                           onClick={() => handleRespondToRequest(request._id, false)}
-                          disabled={actionLoading === request._id}
+                          disabled={respondToSwapRequestMutation.isPending}
                           className="flex-1 bg-red-600 text-white py-2 px-3 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center space-x-1 text-sm"
                         >
-                          {actionLoading === request._id ? (
-                            <Loader className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <X className="h-4 w-4" />
-                              <span>Decline</span>
-                            </>
-                          )}
+                          <X className="h-4 w-4" />
+                          <span>Decline</span>
                         </button>
                       </div>
                     )}
@@ -245,7 +235,7 @@ const Notifications: React.FC = () => {
                           Your Request
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
-                          To {request.targetSlotId.userId}
+                          To {request.targetSlotId.userId.name}
                         </p>
                       </div>
                       <span

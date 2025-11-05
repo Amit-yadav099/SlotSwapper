@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Calendar, Clock, Tag } from 'lucide-react';
-import type { Event, EventFormData } from '../types';
+import { Event, EventFormData } from '../types';
 
 interface EventFormProps {
   event?: Event;

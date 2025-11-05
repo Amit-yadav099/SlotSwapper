@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, LogOut, User, Menu, Home, ArrowRight, Bell } from 'lucide-react';
+import { Calendar, LogOut, User, Home, ArrowRight, Bell } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -34,10 +34,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2 group">
-                <div className="bg-gradient-to-r from-primary-600 to-purple-600 p-2 rounded-lg">
+                <div className="bg-blue-400 p-2 rounded-lg">
                   <Calendar className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent">
+                <span className="text-xl font-bold bg-blue-400 bg-clip-text text-transparent">
                   SlotSwapper
                 </span>
               </Link>
@@ -89,15 +89,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     to="/login"
                     className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
                       isActiveRoute('/login')
-                        ? 'bg-primary-600 text-white shadow-md'
-                        : 'text-gray-600 hover:text-primary-600'
+                        ? 'bg-blue-400 text-white shadow-md'
+                        : 'text-gray-600 hover:text-primary-500'
                     }`}
                   >
                     Sign In
                   </Link>
                   <Link
                     to="/register"
-                    className="bg-gradient-to-r from-primary-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                    className=" bg-blue-400 text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                   >
                     Get Started
                   </Link>

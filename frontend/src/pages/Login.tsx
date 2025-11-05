@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import type { LoginFormData } from '../types';
+import { LoginFormData } from '../types';
 import FormInput from '../components/FormInput';
 import AnimatedBackground from '../components/AnimateBackground';
 import { Mail, Lock, Calendar, ArrowRight, CheckCircle, Eye, EyeOff, Clock, Users, Zap } from 'lucide-react';
@@ -86,10 +86,10 @@ const Login: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 relative bg-gradient-to-r from-teal-400 to-blue-500">
+    <div className="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 relative bg-gradient-to-r from-blue-500 to-blue-300">
       <AnimatedBackground />
       
-      <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ">
         {/* Left Side - Branding and Features */}
         <div className="text-center lg:text-left space-y-8 animate-slide-up">
           <div className="space-y-6">

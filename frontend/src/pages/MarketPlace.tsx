@@ -1,59 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Calendar, Clock, User, ArrowRight, Loader, X } from 'lucide-react';
-import type { Event } from '../types';
-import { swapAPI, eventAPI } from '../utils/api';
-import { useAuth } from '../context/AuthContext';
+import React, { useState } from 'react';
+import { Search, Calendar, Clock, User, ArrowRight, Loader, X, RefreshCw } from 'lucide-react';
+import { Event } from '../types';
+import { useSwappableSlots, useCreateSwapRequest } from '../hooks/useSwaps';
+import { useEvents } from '../hooks/useEvents';
 
 const Marketplace: React.FC = () => {
-  const [swappableSlots, setSwappableSlots] = useState<Event[]>([]);
-  const [mySwappableSlots, setMySwappableSlots] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSlot, setSelectedSlot] = useState<Event | null>(null);
   const [showSwapModal, setShowSwapModal] = useState(false);
-  const [swapLoading, setSwapLoading] = useState<string | null>(null);
+  
+  const { data: swappableSlots = [], isLoading, error, refetch } = useSwappableSlots();
+  const { data: myEvents = [] } = useEvents();
+  const createSwapRequestMutation = useCreateSwapRequest();
 
-  const { user } = useAuth();
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [slotsResponse, myEventsResponse] = await Promise.all([
-        swapAPI.getSwappableSlots(),
-        eventAPI.getAll()
-      ]);
-
-      setSwappableSlots(slotsResponse.data);
-      setMySwappableSlots(myEventsResponse.data.filter((event: Event) => event.status === 'SWAPPABLE'));
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const mySwappableSlots = myEvents.filter((event: Event) => event.status === 'SWAPPABLE');
 
   const handleRequestSwap = async (mySlotId: string) => {
     if (!selectedSlot) return;
 
     try {
-      setSwapLoading(mySlotId);
-      await swapAPI.createSwapRequest({
+      await createSwapRequestMutation.mutateAsync({
         mySlotId,
         theirSlotId: selectedSlot._id
       });
       
-      await fetchData(); // Refresh data
       setShowSwapModal(false);
       setSelectedSlot(null);
       alert('Swap request sent successfully!');
     } catch (error: any) {
       console.error('Error creating swap request:', error);
       alert(error.response?.data?.message || 'Error sending swap request');
-    } finally {
-      setSwapLoading(null);
     }
   };
 
@@ -79,10 +55,26 @@ const Marketplace: React.FC = () => {
     (slot.userId as any)?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader className="h-8 w-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">Failed to load marketplace</div>
+          <button
+            onClick={() => refetch()}
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -92,10 +84,21 @@ const Marketplace: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Swap Marketplace</h1>
-          <p className="text-gray-600 mt-2">
-            Discover available time slots from other users and request swaps
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Swap Marketplace</h1>
+              <p className="text-gray-600 mt-2">
+                Discover available time slots from other users and request swaps
+              </p>
+            </div>
+            <button
+              onClick={() => refetch()}
+              className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -228,10 +231,10 @@ const Marketplace: React.FC = () => {
                         </div>
                         <button
                           onClick={() => handleRequestSwap(slot._id)}
-                          disabled={swapLoading === slot._id}
+                          disabled={createSwapRequestMutation.isPending}
                           className="w-full mt-2 bg-primary-600 text-white py-1.5 px-3 rounded text-sm hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                         >
-                          {swapLoading === slot._id ? (
+                          {createSwapRequestMutation.isPending ? (
                             <Loader className="h-3 w-3 animate-spin mx-auto" />
                           ) : (
                             'Offer This Slot'

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Event, EventFormData, CreateSwapRequestData, SwapResponseData } from '../types';
+import { Event, EventFormData, CreateSwapRequestData, SwapResponseData, LoginFormData, RegisterFormData, SwapRequestsResponse } from '../types';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -29,33 +29,29 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
-  register: (name: string, email: string, password: string) =>
-    api.post('/auth/register', { name, email, password }),
-   getCurrentUser: (token: string) =>
-    axios.get(`/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  login: (data: LoginFormData) =>
+    api.post('/auth/login', data),
+  register: (data: Omit<RegisterFormData, 'confirmPassword'>) =>
+    api.post('/auth/register', data),
 };
 
 export const eventAPI = {
-  getAll: () => api.get<Event[]>('/events'),
-  getById: (id: string) => api.get<Event>(`/events/${id}`),
-  create: (data: EventFormData) => api.post<Event>('/events', data),
-  update: (id: string, data: Partial<EventFormData>) => api.put<Event>(`/events/${id}`, data),
+  getAll: () => api.get<{ events: Event[] }>('/events'),
+  getById: (id: string) => api.get<{ event: Event }>(`/events/${id}`),
+  create: (data: EventFormData) => api.post<{ event: Event }>('/events', data),
+  update: (id: string, data: Partial<EventFormData>) => api.put<{ event: Event }>(`/events/${id}`, data),
   delete: (id: string) => api.delete(`/events/${id}`),
   updateStatus: (id: string, status: 'BUSY' | 'SWAPPABLE') => 
-    api.patch<Event>(`/events/${id}/status`, { status }),
+    api.patch<{ event: Event }>(`/events/${id}/status`, { status }),
 };
 
 export const swapAPI = {
-  getSwappableSlots: () => api.get<Event[]>('/swaps/swappable-slots'),
+  getSwappableSlots: () => api.get<{ slots: Event[] }>('/swaps/swappable-slots'),
   createSwapRequest: (data: CreateSwapRequestData) => 
-    api.post('/swaps/swap-request', data),
+    api.post<{ swapRequest: any }>('/swaps/swap-request', data),
   respondToSwapRequest: (requestId: string, data: SwapResponseData) =>
-    api.post(`/swaps/swap-response/${requestId}`, data),
-  getMyRequests: () => api.get<{ incoming: any[]; outgoing: any[] }>('/swaps/my-requests'),
+    api.post<{ swapRequest: any }>(`/swaps/swap-response/${requestId}`, data),
+  getMyRequests: () => api.get<SwapRequestsResponse>('/swaps/my-requests'),
 };
 
 export default api;

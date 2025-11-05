@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import type { RegisterFormData } from '../types';
+import { RegisterFormData } from '../types';
 import FormInput from '../components/FormInput';
 import AnimatedBackground from '../components/AnimateBackground';
 import { Mail, Lock, User, Calendar, ArrowRight, CheckCircle, Eye, EyeOff, Shield, Clock, Users, Zap } from 'lucide-react';
@@ -138,7 +138,7 @@ const Register: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 relative bg-gradient-to-r from-primary-100 to-blue-400">
+    <div className="min-h-screen flex items-center justify-center py-8 px-4 sm:px-10 lg:px-8 relative bg-gradient-to-r from-primary-200 to-blue-600">
       <AnimatedBackground />
       
       <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">

@@ -40,15 +40,14 @@ export interface EventFormData {
   title: string;
   startTime: string;
   endTime: string;
-  status: 'BUSY' | 'SWAPPABLE' | 'SWAP_PENDING';
+  status: 'BUSY' | 'SWAPPABLE' | "SWAP_PENDING";
 }
 
 // Swap types
 export interface SwapRequest {
   _id: string;
-  name:string;
-  requesterSlotId: Event;
-  targetSlotId: Event;
+  requesterSlotId: Event & { userId: User };
+  targetSlotId: Event & { userId: User };
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   createdAt: string;
 }

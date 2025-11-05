@@ -1,37 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, Clock, ArrowRight, Edit2, Trash2, Loader } from 'lucide-react';
-import type { Event, EventFormData } from '../types';
-import { eventAPI } from '../utils/api';
+import React, { useState } from 'react';
+import { Plus, Calendar, Clock, ArrowRight, Edit2, Trash2, Loader, RefreshCw, AlertCircle } from 'lucide-react';
+import { Event, EventFormData } from '../types';
 import EventForm from '../components/EventForm';
-import { useAuth } from '../context/AuthContext';
+import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useUpdateEventStatus } from '../hooks/useEvents';
 
 const Dashboard: React.FC = () => {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const { user } = useAuth();
-
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    try {
-      const response = await eventAPI.getAll();
-      setEvents(response.data);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  const { data: events = [], isLoading, error, refetch } = useEvents();
+  const createEventMutation = useCreateEvent();
+  const updateEventMutation = useUpdateEvent();
+  const deleteEventMutation = useDeleteEvent();
+  const updateEventStatusMutation = useUpdateEventStatus();
 
   const handleCreateEvent = async (data: EventFormData) => {
     try {
-      await eventAPI.create(data);
-      await fetchEvents();
+      await createEventMutation.mutateAsync(data);
       setShowEventForm(false);
     } catch (error: any) {
       console.error('Error creating event:', error);
@@ -43,15 +28,11 @@ const Dashboard: React.FC = () => {
     if (!editingEvent) return;
     
     try {
-      setActionLoading(editingEvent._id);
-      await eventAPI.update(editingEvent._id, data);
-      await fetchEvents();
+      await updateEventMutation.mutateAsync({ id: editingEvent._id, data });
       setEditingEvent(null);
     } catch (error: any) {
       console.error('Error updating event:', error);
       alert(error.response?.data?.message || 'Error updating event');
-    } finally {
-      setActionLoading(null);
     }
   };
 
@@ -59,14 +40,10 @@ const Dashboard: React.FC = () => {
     if (!confirm('Are you sure you want to delete this event?')) return;
     
     try {
-      setActionLoading(eventId);
-      await eventAPI.delete(eventId);
-      await fetchEvents();
+      await deleteEventMutation.mutateAsync(eventId);
     } catch (error: any) {
       console.error('Error deleting event:', error);
       alert(error.response?.data?.message || 'Error deleting event');
-    } finally {
-      setActionLoading(null);
     }
   };
 
@@ -74,14 +51,10 @@ const Dashboard: React.FC = () => {
     const newStatus = event.status === 'BUSY' ? 'SWAPPABLE' : 'BUSY';
     
     try {
-      setActionLoading(event._id);
-      await eventAPI.updateStatus(event._id, newStatus);
-      await fetchEvents();
+      await updateEventStatusMutation.mutateAsync({ id: event._id, status: newStatus });
     } catch (error: any) {
       console.error('Error updating event status:', error);
       alert(error.response?.data?.message || 'Error updating event status');
-    } finally {
-      setActionLoading(null);
     }
   };
 
@@ -112,10 +85,26 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader className="h-8 w-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">Failed to load events</div>
+          <button
+            onClick={() => refetch()}
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -130,15 +119,43 @@ const Dashboard: React.FC = () => {
               <h1 className="text-3xl font-bold text-gray-900">My Calendar</h1>
               <p className="text-gray-600 mt-2">Manage your events and make them available for swapping</p>
             </div>
-            <button
-              onClick={() => setShowEventForm(true)}
-              className="bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2 shadow-lg"
-            >
-              <Plus className="h-5 w-5" />
-              <span>Add Event</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => refetch()}
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={() => setShowEventForm(true)}
+                className="bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2 shadow-lg"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Add Event</span>
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start space-x-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-yellow-800 font-medium">Connection Issue</h3>
+              <p className="text-yellow-700 text-sm mt-1">
+                Could not connect to server. Some features may be limited.
+              </p>
+            </div>
+            <button
+              onClick={() => refetch()}
+              className="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 transition-colors duration-200"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Events Grid */}
         {events.length === 0 ? (
@@ -158,8 +175,15 @@ const Dashboard: React.FC = () => {
             {events.map((event) => (
               <div
                 key={event._id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 relative"
               >
+                {/* Loading Overlay */}
+                {(updateEventStatusMutation.isPending && updateEventStatusMutation.variables?.id === event._id) && (
+                  <div className="absolute inset-0 bg-white bg-opacity-50 rounded-xl flex items-center justify-center z-10">
+                    <Loader className="h-6 w-6 text-primary-600 animate-spin" />
+                  </div>
+                )}
+
                 {/* Event Header */}
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="font-semibold text-gray-900 text-lg">{event.title}</h3>
@@ -188,7 +212,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleToggleStatus(event)}
-                    disabled={actionLoading === event._id || event.status === 'SWAP_PENDING'}
+                    disabled={event.status === 'SWAP_PENDING' || updateEventStatusMutation.isPending}
                     className="flex-1 bg-gray-100 text-gray-700 py-2 px-3 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center space-x-1 text-sm"
                   >
                     <ArrowRight className="h-4 w-4" />
@@ -200,7 +224,7 @@ const Dashboard: React.FC = () => {
                   
                   <button
                     onClick={() => setEditingEvent(event)}
-                    disabled={actionLoading === event._id}
+                    disabled={updateEventStatusMutation.isPending}
                     className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                   >
                     <Edit2 className="h-4 w-4" />
@@ -208,29 +232,23 @@ const Dashboard: React.FC = () => {
                   
                   <button
                     onClick={() => handleDeleteEvent(event._id)}
-                    disabled={actionLoading === event._id}
+                    disabled={updateEventStatusMutation.isPending}
                     className="p-2 text-gray-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-
-                {/* Loading Overlay */}
-                {actionLoading === event._id && (
-                  <div className="absolute inset-0 bg-white bg-opacity-50 rounded-xl flex items-center justify-center">
-                    <Loader className="h-6 w-6 text-primary-600 animate-spin" />
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
 
-        {/* Event Form Modal */}
+        {/* Event Form Modals */}
         {showEventForm && (
           <EventForm
             onSubmit={handleCreateEvent}
             onCancel={() => setShowEventForm(false)}
+            loading={createEventMutation.isPending}
           />
         )}
 
@@ -239,7 +257,7 @@ const Dashboard: React.FC = () => {
             event={editingEvent}
             onSubmit={handleUpdateEvent}
             onCancel={() => setEditingEvent(null)}
-            loading={actionLoading === editingEvent._id}
+            loading={updateEventMutation.isPending}
           />
         )}
       </div>
