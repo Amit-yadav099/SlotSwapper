@@ -2,16 +2,31 @@ import express from 'express';
 import { auth } from '../middleware/auth.js';
 import Event from '../models/Event.js';
 import { Types } from 'mongoose';
-import {Request , Response} from 'express';
+import { Request, Response } from 'express';
 
-const eventRoutes = express.Router();
+const router = express.Router();
+
+// Helper function to get userId from request with proper typing
+const getUserId = (req: Request): string | null => {
+  if (req.user && typeof req.user === 'object' && 'userId' in req.user) {
+    return (req.user as any).userId;
+  }
+  return null;
+};
 
 // Get all events for authenticated user
-eventRoutes.get('/', auth, async (req:Request, res:Response) => {
+router.get('/', auth, async (req: Request, res: Response) => {
   try {
-    console.log('Fetching events for user:', req.user?.userId);
+    const userId = getUserId(req);
+    console.log('Fetching events for user:', userId);
     
-    const events = await Event.find({ userId: req.user?.userId })
+    if (!userId) {
+      return res.status(401).json({ 
+        message: 'User not authenticated' 
+      });
+    }
+
+    const events = await Event.find({ userId: userId })
       .sort({ startTime: 1 })
       .lean();
 
@@ -32,17 +47,25 @@ eventRoutes.get('/', auth, async (req:Request, res:Response) => {
 });
 
 // Get single event
-eventRoutes.get('/:id', auth, async (req:Request, res:Response) => {
+router.get('/:id', auth, async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+    
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
         message: 'Invalid event ID format' 
       });
     }
 
+    if (!userId) {
+      return res.status(401).json({ 
+        message: 'User not authenticated' 
+      });
+    }
+
     const event = await Event.findOne({
       _id: req.params.id,
-      userId: req.user?.userId
+      userId: userId
     });
 
     if (!event) {
@@ -65,9 +88,16 @@ eventRoutes.get('/:id', auth, async (req:Request, res:Response) => {
 });
 
 // Create new event
-eventRoutes.post('/', auth, async (req:Request, res:Response) => {
+router.post('/', auth, async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const { title, startTime, endTime, status = 'BUSY' } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ 
+        message: 'User not authenticated' 
+      });
+    }
 
     // Validate required fields
     if (!title || !startTime || !endTime) {
@@ -88,7 +118,7 @@ eventRoutes.post('/', auth, async (req:Request, res:Response) => {
 
     // Check for overlapping events
     const overlappingEvent = await Event.findOne({
-      userId: req.user?.userId,
+      userId: userId,
       $or: [
         {
           startTime: { $lt: end },
@@ -108,7 +138,7 @@ eventRoutes.post('/', auth, async (req:Request, res:Response) => {
       startTime: start,
       endTime: end,
       status,
-      userId: req.user?.userId
+      userId: userId
     });
 
     await event.save();
@@ -136,11 +166,19 @@ eventRoutes.post('/', auth, async (req:Request, res:Response) => {
 });
 
 // Update event
-eventRoutes.put('/:id', auth, async (req:Request, res:Response) => {
+router.put('/:id', auth, async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+    
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
         message: 'Invalid event ID format' 
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ 
+        message: 'User not authenticated' 
       });
     }
 
@@ -148,7 +186,7 @@ eventRoutes.put('/:id', auth, async (req:Request, res:Response) => {
 
     const event = await Event.findOne({
       _id: req.params.id,
-      userId: req.user?.userId
+      userId: userId
     });
 
     if (!event) {
@@ -200,17 +238,25 @@ eventRoutes.put('/:id', auth, async (req:Request, res:Response) => {
 });
 
 // Delete event
-eventRoutes.delete('/:id', auth, async (req:Request, res:Response) => {
+router.delete('/:id', auth, async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+    
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
         message: 'Invalid event ID format' 
       });
     }
 
+    if (!userId) {
+      return res.status(401).json({ 
+        message: 'User not authenticated' 
+      });
+    }
+
     const event = await Event.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user?.userId
+      userId: userId
     });
 
     if (!event) {
@@ -232,11 +278,19 @@ eventRoutes.delete('/:id', auth, async (req:Request, res:Response) => {
 });
 
 // Update event status
-eventRoutes.patch('/:id/status', async (req:Request, res:Response) => {
+router.patch('/:id/status', auth, async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+    
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
         message: 'Invalid event ID format' 
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ 
+        message: 'User not authenticated' 
       });
     }
 
@@ -250,7 +304,7 @@ eventRoutes.patch('/:id/status', async (req:Request, res:Response) => {
 
     const event = await Event.findOne({
       _id: req.params.id,
-      userId: req.user?.userId
+      userId: userId
     });
 
     if (!event) {
@@ -275,4 +329,4 @@ eventRoutes.patch('/:id/status', async (req:Request, res:Response) => {
   }
 });
 
-export default eventRoutes;
+export default router;

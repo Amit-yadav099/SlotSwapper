@@ -3,10 +3,10 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { Request, Response } from 'express';
 
-const authRoutes = express.Router();
+const router = express.Router();
 
 // Register new user
-authRoutes.post('/register', async (req:Request, res:Response) => {
+router.post('/register', async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
 
@@ -29,10 +29,14 @@ authRoutes.post('/register', async (req:Request, res:Response) => {
     const user = new User({ name, email, password });
     await user.save();
 
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+
     // Create JWT token
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -63,7 +67,7 @@ authRoutes.post('/register', async (req:Request, res:Response) => {
 });
 
 // Login user
-authRoutes.post('/login', async (req:Request, res:Response) => {
+router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
@@ -90,10 +94,14 @@ authRoutes.post('/login', async (req:Request, res:Response) => {
       });
     }
 
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+
     // Create JWT token
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -114,4 +122,4 @@ authRoutes.post('/login', async (req:Request, res:Response) => {
   }
 });
 
-export default authRoutes;
+export default router;

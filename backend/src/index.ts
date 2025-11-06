@@ -2,27 +2,31 @@ import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth';
-import eventRoutes from './routes/events';
-import swapRoutes from './routes/swaps';
 
-// Load environment variables
+// Import routes
+import authRoutes from './routes/auth.js';
+import eventRoutes from './routes/events.js';
+import swapRoutes from './routes/swaps.js';
+
+// Load environment variables first
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Basic CORS configuration
 app.use(cors({
-  origin: process.env.CLIENT_URL || '*', // allow all origins (safe for testing)
+  origin: process.env.CLIENT_URL || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
@@ -31,11 +35,12 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'OK',
     message: 'SlotSwapper API is running!',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/swaps', swapRoutes);
@@ -45,60 +50,104 @@ app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'SlotSwapper API',
     version: '1.0.0',
-    endpoints: {
-      auth: '/api/auth',
-      events: '/api/events',
-      swaps: '/api/swaps'
-    }
+    status: 'running'
   });
 });
 
-// 404 handler for undefined routes
-app.use((req: Request, res: Response) => {
+// 404 handler
+app.use('*', (req: Request, res: Response) => {
   res.status(404).json({
     message: 'Route not found',
-    path: req.originalUrl,
-    availableEndpoints: [
-      'GET /api/health',
-      'POST /api/auth/register',
-      'POST /api/auth/login',
-      'GET /api/events',
-      'POST /api/events',
-      'GET /api/swaps/swappable-slots',
-      'POST /api/swaps/swap-request',
-      'GET /api/swaps/my-requests'
-    ]
+    path: req.originalUrl
   });
 });
 
-// Error handling middleware
-app.use((error: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', error);
+// Global error handler
+app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('Global error handler:', error);
   res.status(500).json({
     message: 'Internal server error',
-    error: process.env.NODE_ENV === 'production' ? {} : error.message
+    ...(process.env.NODE_ENV === 'development' && { error: error.message })
   });
 });
 
-// MongoDB connection
-mongoose.set('strictQuery', false);
-
-const connectDB = async () => {
+// MongoDB connection with better error handling
+const connectDB = async (): Promise<void> => {
   try {
-    const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/slotswapper';
-    const conn = await mongoose.connect(MONGO_URI);
-    console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+    const MONGO_URI = process.env.MONGODB_URI;
+    
+    if (!MONGO_URI) {
+      throw new Error('MONGODB_URI environment variable is not defined');
+    }
+
+    mongoose.set('strictQuery', false);
+    
+    const conn = await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
+
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📦 Database: ${conn.connection.name}`);
+    
+    // Handle connection events
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('MongoDB disconnected');
+    });
+
+  } catch (error: any) {
+    console.error('❌ MongoDB connection failed:', error.message);
+    // Don't exit process in production, let the process manager handle it
+    if (process.env.NODE_ENV === 'development') {
+      process.exit(1);
+    }
+    throw error;
+  }
+};
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down gracefully');
+  await mongoose.connection.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  await mongoose.connection.close();
+  process.exit(0);
+});
+
+// Start server
+const startServer = async (): Promise<void> => {
+  try {
+    await connectDB();
+    
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
+    });
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 };
 
-// Start the server only after DB connects
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`🌍 Base URL: ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`);
-  });
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
 });
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Start the application
+startServer();
