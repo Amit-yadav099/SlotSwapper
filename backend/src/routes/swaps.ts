@@ -4,10 +4,10 @@ import Event from '../models/Event.js';
 import SwapRequest from '../models/SwapRequest.js';
 import { Types } from 'mongoose';
 
-const router = express.Router();
+const swapRoutes = express.Router();
 
 // Get all swappable slots from other users
-router.get('/swappable-slots', auth, async (req: any, res) => {
+swapRoutes.get('/swappable-slots', auth, async (req: any, res) => {
   try {
     console.log('Fetching swappable slots for user:', req.user.userId);
     
@@ -36,7 +36,7 @@ router.get('/swappable-slots', auth, async (req: any, res) => {
 });
 
 // Create swap request
-router.post('/swap-request', auth, async (req: any, res) => {
+swapRoutes.post('/swap-request', auth, async (req: any, res) => {
   const session = await Event.startSession();
   session.startTransaction();
 
@@ -170,7 +170,7 @@ router.post('/swap-request', auth, async (req: any, res) => {
 });
 
 // Respond to swap request
-router.post('/swap-response/:requestId', auth, async (req: any, res) => {
+swapRoutes.post('/swap-response/:requestId', auth, async (req: any, res) => {
   const session = await Event.startSession();
   session.startTransaction();
 
@@ -205,9 +205,11 @@ router.post('/swap-response/:requestId', auth, async (req: any, res) => {
         message: 'Swap request not found' 
       });
     }
+    const requesterSlot: any = swapRequest.requesterSlotId;
+    const targetSlot: any = swapRequest.targetSlotId;
 
     // Check if the current user owns the target slot
-    if (swapRequest.targetSlotId.userId.toString() !== req.user.userId) {
+    if (targetSlot.userId.toString() !== req.user.userId) {
       await session.abortTransaction();
       return res.status(403).json({ 
         message: 'Not authorized to respond to this request' 
@@ -223,29 +225,29 @@ router.post('/swap-response/:requestId', auth, async (req: any, res) => {
 
     if (accepted) {
       // ACCEPTED: Swap the owners
-      const tempUserId = swapRequest.requesterSlotId.userId;
-      swapRequest.requesterSlotId.userId = swapRequest.targetSlotId.userId;
-      swapRequest.targetSlotId.userId = tempUserId;
+      const tempUserId = requesterSlot.userId;
+      requesterSlot.userId = targetSlot.userId;
+      targetSlot.userId = tempUserId;
 
       // Set both slots back to BUSY
-      swapRequest.requesterSlotId.status = 'BUSY';
-      swapRequest.targetSlotId.status = 'BUSY';
+      requesterSlot.status = 'BUSY';
+      targetSlot.status = 'BUSY';
 
       swapRequest.status = 'ACCEPTED';
       
       console.log('Swap accepted - owners swapped');
     } else {
       // REJECTED: Set both slots back to SWAPPABLE
-      swapRequest.requesterSlotId.status = 'SWAPPABLE';
-      swapRequest.targetSlotId.status = 'SWAPPABLE';
+      requesterSlot.status = 'SWAPPABLE';
+      targetSlot.status = 'SWAPPABLE';
 
       swapRequest.status = 'REJECTED';
       
       console.log('Swap rejected - slots returned to swappable');
     }
 
-    await swapRequest.requesterSlotId.save({ session });
-    await swapRequest.targetSlotId.save({ session });
+    await requesterSlot.save({ session });
+    await targetSlot.save({ session });
     await swapRequest.save({ session });
 
     await session.commitTransaction();
@@ -268,7 +270,7 @@ router.post('/swap-response/:requestId', auth, async (req: any, res) => {
 });
 
 // Get user's swap requests (incoming and outgoing)
-router.get('/my-requests', auth, async (req: any, res) => {
+swapRoutes.get('/my-requests', auth, async (req: any, res) => {
   try {
     console.log('Fetching swap requests for user:', req.user.userId);
 
@@ -320,4 +322,4 @@ router.get('/my-requests', auth, async (req: any, res) => {
   }
 });
 
-export default router;
+export default swapRoutes;

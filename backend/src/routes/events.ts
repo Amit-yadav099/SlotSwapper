@@ -3,10 +3,10 @@ import { auth } from '../middleware/auth.js';
 import Event from '../models/Event.js';
 import { Types } from 'mongoose';
 
-const router = express.Router();
+const eventRoutes = express.Router();
 
 // Get all events for authenticated user
-router.get('/', auth, async (req: any, res) => {
+eventRoutes.get('/', auth, async (req: any, res) => {
   try {
     console.log('Fetching events for user:', req.user.userId);
     
@@ -31,7 +31,7 @@ router.get('/', auth, async (req: any, res) => {
 });
 
 // Get single event
-router.get('/:id', auth, async (req: any, res) => {
+eventRoutes.get('/:id', auth, async (req: any, res) => {
   try {
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -64,7 +64,7 @@ router.get('/:id', auth, async (req: any, res) => {
 });
 
 // Create new event
-router.post('/', auth, async (req: any, res) => {
+eventRoutes.post('/', auth, async (req: any, res) => {
   try {
     const { title, startTime, endTime, status = 'BUSY' } = req.body;
 
@@ -135,7 +135,7 @@ router.post('/', auth, async (req: any, res) => {
 });
 
 // Update event
-router.put('/:id', auth, async (req: any, res) => {
+eventRoutes.put('/:id', auth, async (req: any, res) => {
   try {
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -199,7 +199,7 @@ router.put('/:id', auth, async (req: any, res) => {
 });
 
 // Delete event
-router.delete('/:id', auth, async (req: any, res) => {
+eventRoutes.delete('/:id', auth, async (req: any, res) => {
   try {
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -231,7 +231,7 @@ router.delete('/:id', auth, async (req: any, res) => {
 });
 
 // Update event status
-router.patch('/:id/status', auth, async (req: any, res) => {
+eventRoutes.patch('/:id/status', auth, async (req: any, res) => {
   try {
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -274,4 +274,4 @@ router.patch('/:id/status', auth, async (req: any, res) => {
   }
 });
 
-export default router;
+export default eventRoutes;
