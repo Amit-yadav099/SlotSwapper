@@ -2,15 +2,16 @@ import express from 'express';
 import { auth } from '../middleware/auth.js';
 import Event from '../models/Event.js';
 import { Types } from 'mongoose';
+import {Request , Response} from 'express';
 
 const eventRoutes = express.Router();
 
 // Get all events for authenticated user
-eventRoutes.get('/', auth, async (req: any, res) => {
+eventRoutes.get('/', auth, async (req:Request, res:Response) => {
   try {
-    console.log('Fetching events for user:', req.user.userId);
+    console.log('Fetching events for user:', req.user?.userId);
     
-    const events = await Event.find({ userId: req.user.userId })
+    const events = await Event.find({ userId: req.user?.userId })
       .sort({ startTime: 1 })
       .lean();
 
@@ -31,7 +32,7 @@ eventRoutes.get('/', auth, async (req: any, res) => {
 });
 
 // Get single event
-eventRoutes.get('/:id', auth, async (req: any, res) => {
+eventRoutes.get('/:id', auth, async (req:Request, res:Response) => {
   try {
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -41,7 +42,7 @@ eventRoutes.get('/:id', auth, async (req: any, res) => {
 
     const event = await Event.findOne({
       _id: req.params.id,
-      userId: req.user.userId
+      userId: req.user?.userId
     });
 
     if (!event) {
@@ -64,7 +65,7 @@ eventRoutes.get('/:id', auth, async (req: any, res) => {
 });
 
 // Create new event
-eventRoutes.post('/', auth, async (req: any, res) => {
+eventRoutes.post('/', auth, async (req:Request, res:Response) => {
   try {
     const { title, startTime, endTime, status = 'BUSY' } = req.body;
 
@@ -87,7 +88,7 @@ eventRoutes.post('/', auth, async (req: any, res) => {
 
     // Check for overlapping events
     const overlappingEvent = await Event.findOne({
-      userId: req.user.userId,
+      userId: req.user?.userId,
       $or: [
         {
           startTime: { $lt: end },
@@ -107,7 +108,7 @@ eventRoutes.post('/', auth, async (req: any, res) => {
       startTime: start,
       endTime: end,
       status,
-      userId: req.user.userId
+      userId: req.user?.userId
     });
 
     await event.save();
@@ -135,7 +136,7 @@ eventRoutes.post('/', auth, async (req: any, res) => {
 });
 
 // Update event
-eventRoutes.put('/:id', auth, async (req: any, res) => {
+eventRoutes.put('/:id', auth, async (req:Request, res:Response) => {
   try {
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -147,7 +148,7 @@ eventRoutes.put('/:id', auth, async (req: any, res) => {
 
     const event = await Event.findOne({
       _id: req.params.id,
-      userId: req.user.userId
+      userId: req.user?.userId
     });
 
     if (!event) {
@@ -199,7 +200,7 @@ eventRoutes.put('/:id', auth, async (req: any, res) => {
 });
 
 // Delete event
-eventRoutes.delete('/:id', auth, async (req: any, res) => {
+eventRoutes.delete('/:id', auth, async (req:Request, res:Response) => {
   try {
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -209,7 +210,7 @@ eventRoutes.delete('/:id', auth, async (req: any, res) => {
 
     const event = await Event.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user.userId
+      userId: req.user?.userId
     });
 
     if (!event) {
@@ -231,7 +232,7 @@ eventRoutes.delete('/:id', auth, async (req: any, res) => {
 });
 
 // Update event status
-eventRoutes.patch('/:id/status', auth, async (req: any, res) => {
+eventRoutes.patch('/:id/status', async (req:Request, res:Response) => {
   try {
     if (!Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -249,7 +250,7 @@ eventRoutes.patch('/:id/status', auth, async (req: any, res) => {
 
     const event = await Event.findOne({
       _id: req.params.id,
-      userId: req.user.userId
+      userId: req.user?.userId
     });
 
     if (!event) {

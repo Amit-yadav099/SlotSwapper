@@ -1,11 +1,12 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { Request, Response } from 'express';
 
 const authRoutes = express.Router();
 
 // Register new user
-authRoutes.post('/register', async (req, res) => {
+authRoutes.post('/register', async (req:Request, res:Response) => {
   try {
     const { name, email, password } = req.body;
 
@@ -62,7 +63,7 @@ authRoutes.post('/register', async (req, res) => {
 });
 
 // Login user
-authRoutes.post('/login', async (req, res) => {
+authRoutes.post('/login', async (req:Request, res:Response) => {
   try {
     const { email, password } = req.body;
 

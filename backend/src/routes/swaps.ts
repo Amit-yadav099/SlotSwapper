@@ -3,17 +3,17 @@ import { auth } from '../middleware/auth.js';
 import Event from '../models/Event.js';
 import SwapRequest from '../models/SwapRequest.js';
 import { Types } from 'mongoose';
-
+import { Request,Response } from 'express';
 const swapRoutes = express.Router();
 
 // Get all swappable slots from other users
-swapRoutes.get('/swappable-slots', auth, async (req: any, res) => {
+swapRoutes.get('/swappable-slots', auth, async (req:Request, res:Response) => {
   try {
-    console.log('Fetching swappable slots for user:', req.user.userId);
+    console.log('Fetching swappable slots for user:', req.user?.userId);
     
     const swappableSlots = await Event.find({
       status: 'SWAPPABLE',
-      userId: { $ne: new Types.ObjectId(req.user.userId) }
+      userId: { $ne: new Types.ObjectId(req.user?.userId) }
     })
       .populate('userId', 'name email')
       .sort({ startTime: 1 })
@@ -36,14 +36,14 @@ swapRoutes.get('/swappable-slots', auth, async (req: any, res) => {
 });
 
 // Create swap request
-swapRoutes.post('/swap-request', auth, async (req: any, res) => {
+swapRoutes.post('/swap-request', auth, async (req:Request, res:Response) => {
   const session = await Event.startSession();
   session.startTransaction();
 
   try {
     const { mySlotId, theirSlotId } = req.body;
 
-    console.log('Creating swap request:', { mySlotId, theirSlotId, userId: req.user.userId });
+    console.log('Creating swap request:', { mySlotId, theirSlotId, userId: req.user?.userId });
 
     // Validate input
     if (!mySlotId || !theirSlotId) {
@@ -63,7 +63,7 @@ swapRoutes.post('/swap-request', auth, async (req: any, res) => {
     // Get both slots within transaction
     const mySlot = await Event.findOne({
       _id: mySlotId,
-      userId: req.user.userId
+      userId: req.user?.userId
     }).session(session);
 
     const theirSlot = await Event.findOne({
@@ -170,7 +170,7 @@ swapRoutes.post('/swap-request', auth, async (req: any, res) => {
 });
 
 // Respond to swap request
-swapRoutes.post('/swap-response/:requestId', auth, async (req: any, res) => {
+swapRoutes.post('/swap-response/:requestId', auth, async (req:Request, res:Response) => {
   const session = await Event.startSession();
   session.startTransaction();
 
@@ -178,7 +178,7 @@ swapRoutes.post('/swap-response/:requestId', auth, async (req: any, res) => {
     const { accepted } = req.body;
     const { requestId } = req.params;
 
-    console.log('Processing swap response:', { requestId, accepted, userId: req.user.userId });
+    console.log('Processing swap response:', { requestId, accepted, userId: req.user?.userId });
 
     if (!Types.ObjectId.isValid(requestId)) {
       await session.abortTransaction();
@@ -209,7 +209,7 @@ swapRoutes.post('/swap-response/:requestId', auth, async (req: any, res) => {
     const targetSlot: any = swapRequest.targetSlotId;
 
     // Check if the current user owns the target slot
-    if (targetSlot.userId.toString() !== req.user.userId) {
+    if (targetSlot.userId.toString() !== req.user?.userId) {
       await session.abortTransaction();
       return res.status(403).json({ 
         message: 'Not authorized to respond to this request' 
@@ -270,15 +270,15 @@ swapRoutes.post('/swap-response/:requestId', auth, async (req: any, res) => {
 });
 
 // Get user's swap requests (incoming and outgoing)
-swapRoutes.get('/my-requests', auth, async (req: any, res) => {
+swapRoutes.get('/my-requests', auth, async (req:Request, res:Response) => {
   try {
-    console.log('Fetching swap requests for user:', req.user.userId);
+    console.log('Fetching swap requests for user:', req.user?.userId);
 
     // Get incoming requests (where user is the target slot owner)
     const incomingRequests = await SwapRequest.find()
       .populate({
         path: 'targetSlotId',
-        match: { userId: new Types.ObjectId(req.user.userId) },
+        match: { userId: new Types.ObjectId(req.user?.userId) },
         populate: { path: 'userId', select: 'name email' }
       })
       .populate({
@@ -292,7 +292,7 @@ swapRoutes.get('/my-requests', auth, async (req: any, res) => {
     const outgoingRequests = await SwapRequest.find()
       .populate({
         path: 'requesterSlotId',
-        match: { userId: new Types.ObjectId(req.user.userId) },
+        match: { userId: new Types.ObjectId(req.user?.userId) },
         populate: { path: 'userId', select: 'name email' }
       })
       .populate({
