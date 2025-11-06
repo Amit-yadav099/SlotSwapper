@@ -20,23 +20,11 @@ const eventSchema: Schema = new Schema({
   },
   startTime: {
     type: Date,
-    required: [true, 'Start time is required'],
-    validate: {
-      validator: function(this: IEvent, value: Date) {
-        return value < this.endTime;
-      },
-      message: 'Start time must be before end time'
-    }
+    required: [true, 'Start time is required']
   },
   endTime: {
     type: Date,
-    required: [true, 'End time is required'],
-    validate: {
-      validator: function(this: IEvent, value: Date) {
-        return value > this.startTime;
-      },
-      message: 'End time must be after start time'
-    }
+    required: [true, 'End time is required']
   },
   status: {
     type: String,
@@ -54,6 +42,15 @@ const eventSchema: Schema = new Schema({
   }
 }, {
   timestamps: true
+});
+
+// Add validation for startTime < endTime
+eventSchema.pre('save', function(this: IEvent, next) {
+  if (this.startTime >= this.endTime) {
+    next(new Error('End time must be after start time'));
+  } else {
+    next();
+  }
 });
 
 // Index for efficient queries
